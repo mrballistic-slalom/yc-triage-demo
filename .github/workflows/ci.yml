@@ -7,63 +7,40 @@ on:
     branches: [main]
 
 jobs:
-  frontend:
-    name: Frontend
+  ci:
+    name: Lint, type-check, test, build
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: frontend
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
           cache: 'npm'
-          cache-dependency-path: frontend/package-lock.json
-      - run: npm ci
-      - run: npm run lint
-      - run: npm run typecheck
-      - run: npm run test
+          cache-dependency-path: package-lock.json
+      - name: Install workspace dependencies
+        run: npm ci
 
-  backend:
-    name: Backend
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: backend
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: 'npm'
-          cache-dependency-path: backend/package-lock.json
-      - run: npm ci
-      - run: npm run lint
-      - run: npm run typecheck
-      - run: npm run test
-      - run: npm run build
+      - name: Frontend lint
+        run: npm --workspace frontend run lint
+      - name: Frontend typecheck
+        run: npm --workspace frontend run typecheck
+      - name: Frontend tests
+        run: npm --workspace frontend run test
+      - name: Frontend build
+        run: npm --workspace frontend run build
 
-  infrastructure:
-    name: Infrastructure
-    runs-on: ubuntu-latest
-    needs: [backend]
-    defaults:
-      run:
-        working-directory: infrastructure
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: 'npm'
-          cache-dependency-path: infrastructure/package-lock.json
-      - name: Build backend (for CDK asset)
-        working-directory: backend
-        run: |
-          npm ci
-          npm run build
-      - run: npm ci
-      - run: npm run lint
-      - run: npm run typecheck
-      - run: npm run synth -- --quiet
+      - name: Backend lint
+        run: npm --workspace backend run lint
+      - name: Backend typecheck
+        run: npm --workspace backend run typecheck
+      - name: Backend tests
+        run: npm --workspace backend run test
+      - name: Backend build
+        run: npm --workspace backend run build
+
+      - name: Infrastructure lint
+        run: npm --workspace infrastructure run lint
+      - name: Infrastructure typecheck
+        run: npm --workspace infrastructure run typecheck
+      - name: Infrastructure synth
+        run: npm --workspace infrastructure run synth -- --quiet

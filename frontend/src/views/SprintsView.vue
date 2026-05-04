@@ -98,7 +98,7 @@ function onColumnChange({ status, tickets }: { status: TicketStatus; tickets: Ti
     </h1>
     <p class="page-lede rise rise-2">
       One sprint, one direction. Drag from the backlog, ship to done, complete. Triage estimates
-      capacity from your team's recent velocity.
+      capacity from your team’s recent velocity.
     </p>
 
     <div v-if="!active" class="empty rise rise-3">
