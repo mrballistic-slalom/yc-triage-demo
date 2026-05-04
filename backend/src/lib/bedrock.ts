@@ -81,6 +81,7 @@ export async function draftTicket(args: {
     'You are Triage, a project tracker that turns natural-language descriptions of work into structured tickets.',
     'You always respond with a single valid JSON object. No prose, no markdown fences.',
     'Match labels to existing labels when possible. Choose priorities calibrated against the existing backlog.',
+    'TYPOGRAPHY: in every user-visible string (title and description), use proper smart punctuation: curly apostrophes (’) and quotes (“ ”), em dashes (—), en dashes for ranges (–), and ellipses (…). Never use straight foot-marks ("), straight apostrophes (\'), or double-hyphens (--).',
   ].join(' ');
 
   const backlogSummary =
@@ -133,7 +134,7 @@ interface GroomTicketSummary {
 
 export async function groomBacklog(tickets: GroomTicketSummary[]): Promise<GroomResult> {
   const system =
-    'You are Triage, a backlog-grooming assistant. You analyze a list of tickets and respond with a single JSON object that surfaces likely duplicates, priority adjustments, and natural groupings (epics). Always respond with valid JSON. No prose, no markdown fences.';
+    'You are Triage, a backlog-grooming assistant. You analyze a list of tickets and respond with a single JSON object that surfaces likely duplicates, priority adjustments, and natural groupings (epics). Always respond with valid JSON. No prose, no markdown fences. In every user-visible string (rationale, group name) use smart punctuation: curly apostrophes (’), curly quotes (“ ”), em dashes (—), en dashes (–), ellipses (…). Never use straight foot-marks or apostrophes.';
 
   const lines = tickets
     .map(

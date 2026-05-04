@@ -27,7 +27,7 @@ function onChange({ status, tickets }: { status: typeof STATUS_ORDER[number]; ti
   <main class="page">
     <div class="page-eyebrow rise">/ board</div>
     <h1 class="page-title rise rise-1">
-      Speak it. <em>It's filed.</em>
+      Speak it. <em>It’s filed.</em>
     </h1>
     <p class="page-lede rise rise-2">
       Describe the work in plain language. Triage drafts the title, calibrates priority, picks
