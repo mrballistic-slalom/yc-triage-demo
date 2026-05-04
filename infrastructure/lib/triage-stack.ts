@@ -8,12 +8,12 @@ import {
 } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import { Table, AttributeType, BillingMode } from 'aws-cdk-lib/aws-dynamodb';
+import { Runtime } from 'aws-cdk-lib/aws-lambda';
 import {
-  Function as LambdaFunction,
-  Runtime,
-  Code,
-  type FunctionProps,
-} from 'aws-cdk-lib/aws-lambda';
+  NodejsFunction,
+  OutputFormat,
+  type NodejsFunctionProps,
+} from 'aws-cdk-lib/aws-lambda-nodejs';
 import { PolicyStatement, Effect } from 'aws-cdk-lib/aws-iam';
 import {
   HttpApi,
@@ -22,8 +22,8 @@ import {
 } from 'aws-cdk-lib/aws-apigatewayv2';
 import { HttpLambdaIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations';
 
-const BACKEND_DIST = path.resolve(__dirname, '../../backend/dist');
-const BEDROCK_INFERENCE_PROFILE = 'us.anthropic.claude-sonnet-4-5';
+const BACKEND_SRC = path.resolve(__dirname, '../../backend/src');
+const BEDROCK_INFERENCE_PROFILE = 'us.anthropic.claude-sonnet-4-5-20250929-v1:0';
 
 export class TriageStack extends Stack {
   constructor(scope: Construct, id: string, props?: StackProps) {
@@ -63,29 +63,38 @@ export class TriageStack extends Stack {
       NODE_OPTIONS: '--enable-source-maps',
     };
 
-    const baseFn: Pick<FunctionProps, 'runtime' | 'code' | 'memorySize' | 'timeout' | 'environment'> = {
+    const baseFn: Pick<NodejsFunctionProps, 'runtime' | 'memorySize' | 'timeout' | 'environment' | 'bundling'> = {
       runtime: Runtime.NODEJS_22_X,
-      code: Code.fromAsset(BACKEND_DIST),
       memorySize: 512,
       timeout: Duration.seconds(30),
       environment: baseEnv,
+      bundling: {
+        target: 'node22',
+        format: OutputFormat.CJS,
+        sourceMap: true,
+        minify: false,
+        externalModules: ['@aws-sdk/*'],
+      },
     };
 
-    const ticketsFn = new LambdaFunction(this, 'TicketsFn', {
+    const ticketsFn = new NodejsFunction(this, 'TicketsFn', {
       ...baseFn,
-      handler: 'handlers/tickets.handler',
+      entry: path.join(BACKEND_SRC, 'handlers/tickets.ts'),
+      handler: 'handler',
       timeout: Duration.seconds(30),
       memorySize: 1024,
     });
 
-    const sprintsFn = new LambdaFunction(this, 'SprintsFn', {
+    const sprintsFn = new NodejsFunction(this, 'SprintsFn', {
       ...baseFn,
-      handler: 'handlers/sprints.handler',
+      entry: path.join(BACKEND_SRC, 'handlers/sprints.ts'),
+      handler: 'handler',
     });
 
-    const settingsFn = new LambdaFunction(this, 'SettingsFn', {
+    const settingsFn = new NodejsFunction(this, 'SettingsFn', {
       ...baseFn,
-      handler: 'handlers/settings.handler',
+      entry: path.join(BACKEND_SRC, 'handlers/settings.ts'),
+      handler: 'handler',
     });
 
     tickets.grantReadWriteData(ticketsFn);
@@ -102,7 +111,7 @@ export class TriageStack extends Stack {
       actions: ['bedrock:InvokeModel'],
       resources: [
         `arn:aws:bedrock:*::foundation-model/anthropic.claude-sonnet-4-5-*`,
-        `arn:aws:bedrock:${this.region}:${this.account}:inference-profile/${BEDROCK_INFERENCE_PROFILE}`,
+        `arn:aws:bedrock:*:${this.account}:inference-profile/${BEDROCK_INFERENCE_PROFILE}`,
       ],
     });
     ticketsFn.addToRolePolicy(bedrockPolicy);
