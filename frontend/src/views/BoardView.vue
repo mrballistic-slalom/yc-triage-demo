@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { useBoardStore } from '@/stores/board';
-import { STATUS_ORDER, type Ticket } from '@/types';
+import { STATUS_ORDER, type Ticket, type TicketStatus } from '@/types';
 import Composer from '@/components/Composer.vue';
 import KanbanColumn from '@/components/KanbanColumn.vue';
 import TicketDrawer from '@/components/TicketDrawer.vue';
@@ -14,12 +14,8 @@ async function onSubmit(input: string) {
   await board.createFromInput(input);
 }
 
-function onChange({ status, tickets }: { status: typeof STATUS_ORDER[number]; tickets: Ticket[] }) {
-  tickets.forEach((t, idx) => {
-    if (t.status !== status || t.sort_order !== idx) {
-      board.move(t.ticketId, status, idx);
-    }
-  });
+function onMove(payload: { ticketId: string; status: TicketStatus; index: number }) {
+  board.move(payload.ticketId, payload.status, payload.index);
 }
 </script>
 
@@ -68,7 +64,7 @@ function onChange({ status, tickets }: { status: typeof STATUS_ORDER[number]; ti
         :status="status"
         :tickets="board.ticketsByStatus[status]"
         @open="selected = $event"
-        @change="onChange"
+        @move="onMove"
       />
     </div>
 
