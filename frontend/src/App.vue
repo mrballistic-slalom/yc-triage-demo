@@ -4,6 +4,7 @@ import { RouterLink, RouterView, useRoute } from 'vue-router';
 import { useSettingsStore } from '@/stores/settings';
 import { useBoardStore } from '@/stores/board';
 import { useSprintStore } from '@/stores/sprints';
+import PasswordGate from '@/components/PasswordGate.vue';
 
 const settings = useSettingsStore();
 const board = useBoardStore();
@@ -17,6 +18,7 @@ onMounted(async () => {
 
 <template>
   <v-app>
+    <PasswordGate />
     <div class="shell">
       <header class="shell-header">
         <div class="brand">
