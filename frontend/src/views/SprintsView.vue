@@ -81,12 +81,8 @@ async function removeFromSprint(t: Ticket) {
   await board.update(t.ticketId, { sprintId: null });
 }
 
-function onColumnChange({ status, tickets }: { status: TicketStatus; tickets: Ticket[] }) {
-  tickets.forEach((t, idx) => {
-    if (t.status !== status || t.sort_order !== idx) {
-      board.move(t.ticketId, status, idx);
-    }
-  });
+function onMove(payload: { ticketId: string; status: TicketStatus; index: number }) {
+  board.move(payload.ticketId, payload.status, payload.index);
 }
 </script>
 
@@ -171,7 +167,7 @@ function onColumnChange({ status, tickets }: { status: TicketStatus; tickets: Ti
             :status="status"
             :tickets="ticketsByStatus[status]"
             @open="selected = $event"
-            @change="onColumnChange"
+            @move="onMove"
           />
         </div>
       </div>
