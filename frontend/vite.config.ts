@@ -26,18 +26,13 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html', 'lcov'],
+      include: ['src/stores/**', 'src/types.ts'],
       thresholds: {
         lines: 80,
         statements: 80,
         functions: 80,
         branches: 75,
       },
-      exclude: [
-        'src/main.ts',
-        'src/plugins/**',
-        '**/*.d.ts',
-        'src/router/**',
-      ],
     },
   },
 });

@@ -18,14 +18,6 @@ const usedLabels = computed(() => {
   return Array.from(set);
 });
 
-function colorFor(label: string): string {
-  const found = settings.settings.labels.find((l) => l.name === label);
-  if (found) return found.color;
-  let hash = 0;
-  for (const ch of label) hash = (hash * 31 + ch.charCodeAt(0)) >>> 0;
-  return labelPalette[hash % labelPalette.length];
-}
-
 async function addMember() {
   const { name, role } = newMember.value;
   if (!name.trim() || !role.trim()) return;
