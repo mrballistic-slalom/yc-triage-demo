@@ -21,8 +21,22 @@ import {
   CorsHttpMethod,
 } from 'aws-cdk-lib/aws-apigatewayv2';
 import { HttpLambdaIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations';
+import { Bucket, BlockPublicAccess, BucketEncryption } from 'aws-cdk-lib/aws-s3';
+import {
+  Distribution,
+  ViewerProtocolPolicy,
+  AllowedMethods,
+  CachedMethods,
+  CachePolicy,
+  ResponseHeadersPolicy,
+  HeadersFrameOption,
+  HeadersReferrerPolicy,
+} from 'aws-cdk-lib/aws-cloudfront';
+import { S3BucketOrigin } from 'aws-cdk-lib/aws-cloudfront-origins';
+import { BucketDeployment, Source } from 'aws-cdk-lib/aws-s3-deployment';
 
 const BACKEND_SRC = path.resolve(__dirname, '../../backend/src');
+const FRONTEND_DIST = path.resolve(__dirname, '../../frontend/dist');
 const BEDROCK_INFERENCE_PROFILE = 'us.anthropic.claude-sonnet-4-5-20250929-v1:0';
 
 export class TriageStack extends Stack {
@@ -181,6 +195,76 @@ export class TriageStack extends Stack {
     new CfnOutput(this, 'ApiUrl', {
       value: api.apiEndpoint,
       description: 'HTTP API endpoint',
+    });
+
+    const siteBucket = new Bucket(this, 'SiteBucket', {
+      bucketName: `triage-site-${this.account}`,
+      encryption: BucketEncryption.S3_MANAGED,
+      blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
+      removalPolicy: RemovalPolicy.DESTROY,
+      autoDeleteObjects: true,
+    });
+
+    const securityHeaders = new ResponseHeadersPolicy(this, 'SiteHeaders', {
+      securityHeadersBehavior: {
+        contentTypeOptions: { override: true },
+        frameOptions: { frameOption: HeadersFrameOption.DENY, override: true },
+        referrerPolicy: {
+          referrerPolicy: HeadersReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN,
+          override: true,
+        },
+        strictTransportSecurity: {
+          accessControlMaxAge: Duration.days(365),
+          includeSubdomains: true,
+          override: true,
+        },
+      },
+    });
+
+    const distribution = new Distribution(this, 'SiteDistribution', {
+      defaultRootObject: 'index.html',
+      defaultBehavior: {
+        origin: S3BucketOrigin.withOriginAccessControl(siteBucket),
+        viewerProtocolPolicy: ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+        allowedMethods: AllowedMethods.ALLOW_GET_HEAD_OPTIONS,
+        cachedMethods: CachedMethods.CACHE_GET_HEAD_OPTIONS,
+        cachePolicy: CachePolicy.CACHING_OPTIMIZED,
+        compress: true,
+        responseHeadersPolicy: securityHeaders,
+      },
+      errorResponses: [
+        {
+          httpStatus: 403,
+          responseHttpStatus: 200,
+          responsePagePath: '/index.html',
+          ttl: Duration.minutes(1),
+        },
+        {
+          httpStatus: 404,
+          responseHttpStatus: 200,
+          responsePagePath: '/index.html',
+          ttl: Duration.minutes(1),
+        },
+      ],
+      comment: 'Triage frontend',
+    });
+
+    new BucketDeployment(this, 'SiteDeployment', {
+      sources: [Source.asset(FRONTEND_DIST)],
+      destinationBucket: siteBucket,
+      distribution,
+      distributionPaths: ['/*'],
+      prune: true,
+    });
+
+    new CfnOutput(this, 'SiteUrl', {
+      value: `https://${distribution.distributionDomainName}`,
+      description: 'CloudFront distribution URL',
+    });
+
+    new CfnOutput(this, 'SiteBucketName', {
+      value: siteBucket.bucketName,
+      description: 'S3 bucket holding the frontend build',
     });
   }
 }
