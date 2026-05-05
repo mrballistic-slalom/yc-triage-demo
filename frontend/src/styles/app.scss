@@ -18,8 +18,9 @@
   --priority-medium: #2F4A2A;
   --priority-low: #8A8478;
 
-  --shadow-soft: 0 1px 0 rgba(20, 17, 15, 0.04), 0 4px 16px rgba(20, 17, 15, 0.06);
-  --shadow-lift: 0 2px 0 rgba(20, 17, 15, 0.04), 0 12px 32px rgba(20, 17, 15, 0.10);
+  --shadow-soft: 0 1px 2px rgba(20, 17, 15, 0.05), 0 6px 20px rgba(20, 17, 15, 0.06);
+  --shadow-lift: 0 2px 6px rgba(20, 17, 15, 0.06), 0 16px 40px rgba(20, 17, 15, 0.12);
+  --shadow-dialog: 0 24px 80px rgba(20, 17, 15, 0.22), 0 4px 12px rgba(20, 17, 15, 0.06);
 
   --font-display: 'Instrument Serif', 'Iowan Old Style', 'Apple Garamond', Georgia, serif;
   --font-body: 'General Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -666,15 +667,53 @@ body {
 /* Groom modal */
 .groom {
   background: var(--paper);
-  padding: 32px 36px;
   border-radius: 18px;
   max-width: 880px;
+  max-height: min(86vh, 760px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: var(--shadow-dialog);
 }
 
 .groom__header {
-  margin-bottom: 24px;
+  flex-shrink: 0;
+  margin: 0;
+  padding: 28px 36px 18px;
   border-bottom: 1px solid var(--rule);
-  padding-bottom: 18px;
+  background: var(--paper);
+}
+
+.groom__body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 22px 36px 24px;
+  scrollbar-gutter: stable;
+}
+
+.groom__body::-webkit-scrollbar { width: 8px; }
+.groom__body::-webkit-scrollbar-thumb { background: var(--rule); border-radius: 4px; }
+.groom__body::-webkit-scrollbar-thumb:hover { background: var(--ink-faint); }
+
+.groom__footer {
+  flex-shrink: 0;
+  display: flex;
+  justify-content: flex-end;
+  padding: 16px 36px 22px;
+  border-top: 1px solid var(--rule);
+  background: var(--paper);
+  position: relative;
+}
+
+.groom__footer::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -16px;
+  height: 16px;
+  background: linear-gradient(to bottom, transparent, var(--paper));
+  pointer-events: none;
 }
 
 .groom__eyebrow {
@@ -967,6 +1006,14 @@ body {
 }
 
 /* Vuetify overrides */
-.v-overlay__scrim { background: rgba(20, 17, 15, 0.4) !important; }
+.v-overlay__scrim {
+  background: rgba(20, 17, 15, 0.42) !important;
+  backdrop-filter: blur(2px);
+}
 .v-card { background: var(--paper) !important; }
-.v-dialog .v-overlay__content { box-shadow: var(--shadow-lift) !important; }
+.v-dialog .v-overlay__content {
+  box-shadow: none !important;
+  background: transparent !important;
+  border-radius: 18px !important;
+  overflow: visible !important;
+}
