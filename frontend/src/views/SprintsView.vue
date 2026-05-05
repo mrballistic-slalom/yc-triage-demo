@@ -108,16 +108,16 @@ function onMove(payload: { ticketId: string; status: TicketStatus; index: number
 
     <div v-else>
       <div class="sprint-hero rise rise-3">
-        <button class="sprint-hero__complete" @click="complete">
-          <span class="sprint-hero__complete-arrow">←</span>
-          Complete sprint
-        </button>
         <div class="sprint-hero__name-block">
           <h2 class="sprint-hero__name">{{ active.name }}</h2>
           <div class="sprint-hero__meta">
             {{ active.duration }}-week sprint · {{ dateRange }} ·
             {{ sprintTickets.length }} tickets
           </div>
+          <button type="button" class="sprint-hero__complete" @click="complete">
+            <span class="sprint-hero__complete-arrow" aria-hidden="true">←</span>
+            <span>complete sprint</span>
+          </button>
         </div>
         <div class="sprint-hero__right">
           <div class="sprint-hero__capacity serif">
