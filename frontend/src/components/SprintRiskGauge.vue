@@ -38,14 +38,12 @@ const labelByLevel: Record<'low' | 'medium' | 'high', string> = {
 
 <style>
 .risk-gauge {
-  position: absolute;
-  bottom: 18px;
-  right: 32px;
   background: rgba(244, 241, 235, 0.06);
   border: 1px solid rgba(244, 241, 235, 0.15);
   border-radius: 12px;
   padding: 12px 16px 12px 14px;
-  max-width: 320px;
+  width: 320px;
+  max-width: 100%;
   color: var(--paper);
   display: grid;
   grid-template-columns: 1fr auto;

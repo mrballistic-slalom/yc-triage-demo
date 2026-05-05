@@ -108,21 +108,24 @@ function onMove(payload: { ticketId: string; status: TicketStatus; index: number
 
     <div v-else>
       <div class="sprint-hero rise rise-3">
-        <div>
+        <button class="sprint-hero__complete" @click="complete">
+          <span class="sprint-hero__complete-arrow">←</span>
+          Complete sprint
+        </button>
+        <div class="sprint-hero__name-block">
           <h2 class="sprint-hero__name">{{ active.name }}</h2>
           <div class="sprint-hero__meta">
             {{ active.duration }}-week sprint · {{ dateRange }} ·
             {{ sprintTickets.length }} tickets
           </div>
         </div>
-        <div class="sprint-hero__capacity serif">
-          <small>capacity</small>
-          {{ Math.max(8, sprintTickets.length * 2) }}<span style="font-size: 24px;">pts</span>
+        <div class="sprint-hero__right">
+          <div class="sprint-hero__capacity serif">
+            <small>capacity</small>
+            {{ Math.max(8, sprintTickets.length * 2) }}<span style="font-size: 22px;">pts</span>
+          </div>
+          <SprintRiskGauge />
         </div>
-        <button class="btn btn--ghost" style="background: rgba(244,241,235,0.08); color: var(--paper); border-color: rgba(244,241,235,0.2);" @click="complete">
-          Complete sprint
-        </button>
-        <SprintRiskGauge />
       </div>
 
       <div class="kanban rise rise-4" style="grid-template-columns: 1fr 3fr; gap: 24px;">
