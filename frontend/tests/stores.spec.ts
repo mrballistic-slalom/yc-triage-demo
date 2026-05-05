@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useSettingsStore } from '@/stores/settings';
 import { useSprintStore } from '@/stores/sprints';
 import { useBoardStore } from '@/stores/board';
+import { useAiStore } from '@/stores/ai';
 import type { Settings, Sprint, Ticket } from '@/types';
 
 const ticket = (over: Partial<Ticket> = {}): Ticket => ({
@@ -56,6 +57,13 @@ vi.mock('@/api/client', () => ({
     completeSprint: vi.fn(async () => undefined),
     getSettings: vi.fn(async () => fakeSettings),
     updateSettings: vi.fn(async (patch: Partial<Settings>) => ({ ...fakeSettings, ...patch })),
+    ask: vi.fn(async (q: string) => ({ answer: `answer to: ${q}` })),
+    digest: vi.fn(async () => ({ digest: 'pulse' })),
+    risk: vi.fn(async () => ({ level: 'medium' as const, summary: 'watch closely' })),
+    aiEdit: vi.fn(async (id: string, instruction: string) => ({
+      ticket: ticket({ ticketId: id }),
+      patch: { priority: 'high' as const, instruction } as unknown as Partial<Ticket>,
+    })),
   },
 }));
 
@@ -183,5 +191,54 @@ describe('board store edges', () => {
     };
     store.dismissDuplicate('a', 'b');
     expect(store.groomResult.duplicates).toHaveLength(0);
+  });
+});
+
+describe('ai store', () => {
+  beforeEach(() => setActivePinia(createPinia()));
+
+  it('opens and closes the ask panel', () => {
+    const store = useAiStore();
+    store.openAsk();
+    expect(store.askOpen).toBe(true);
+    store.closeAsk();
+    expect(store.askOpen).toBe(false);
+  });
+
+  it('records a successful exchange', async () => {
+    const store = useAiStore();
+    await store.ask('what is at risk?');
+    expect(store.exchanges).toHaveLength(1);
+    expect(store.exchanges[0].pending).toBe(false);
+    expect(store.exchanges[0].answer).toContain('what is at risk');
+  });
+
+  it('records an error on failure', async () => {
+    const { api } = await import('@/api/client');
+    (api.ask as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error('boom'));
+    const store = useAiStore();
+    await store.ask('q');
+    expect(store.exchanges[0].error).toBe('boom');
+  });
+
+  it('caches digest unless forced', async () => {
+    const { api } = await import('@/api/client');
+    const store = useAiStore();
+    await store.loadDigest();
+    expect(store.digest).toBe('pulse');
+    const calls = (api.digest as ReturnType<typeof vi.fn>).mock.calls.length;
+    await store.loadDigest();
+    expect((api.digest as ReturnType<typeof vi.fn>).mock.calls.length).toBe(calls);
+    await store.loadDigest(true);
+    expect((api.digest as ReturnType<typeof vi.fn>).mock.calls.length).toBe(calls + 1);
+  });
+
+  it('loads risk and clears exchanges', async () => {
+    const store = useAiStore();
+    await store.loadRisk();
+    expect(store.risk?.level).toBe('medium');
+    await store.ask('x');
+    store.clearExchanges();
+    expect(store.exchanges).toHaveLength(0);
   });
 });

@@ -111,6 +111,14 @@ export class TriageStack extends Stack {
       handler: 'handler',
     });
 
+    const aiFn = new NodejsFunction(this, 'AiFn', {
+      ...baseFn,
+      entry: path.join(BACKEND_SRC, 'handlers/ai.ts'),
+      handler: 'handler',
+      timeout: Duration.seconds(30),
+      memorySize: 1024,
+    });
+
     tickets.grantReadWriteData(ticketsFn);
     sprints.grantReadWriteData(ticketsFn);
     settings.grantReadData(ticketsFn);
@@ -119,6 +127,10 @@ export class TriageStack extends Stack {
     sprints.grantReadWriteData(sprintsFn);
 
     settings.grantReadWriteData(settingsFn);
+
+    tickets.grantReadWriteData(aiFn);
+    sprints.grantReadData(aiFn);
+    settings.grantReadData(aiFn);
 
     const bedrockPolicy = new PolicyStatement({
       effect: Effect.ALLOW,
@@ -129,6 +141,7 @@ export class TriageStack extends Stack {
       ],
     });
     ticketsFn.addToRolePolicy(bedrockPolicy);
+    aiFn.addToRolePolicy(bedrockPolicy);
 
     const api = new HttpApi(this, 'TriageApi', {
       apiName: 'triage-api',
@@ -148,6 +161,7 @@ export class TriageStack extends Stack {
     const ticketsIntegration = new HttpLambdaIntegration('TicketsInt', ticketsFn);
     const sprintsIntegration = new HttpLambdaIntegration('SprintsInt', sprintsFn);
     const settingsIntegration = new HttpLambdaIntegration('SettingsInt', settingsFn);
+    const aiIntegration = new HttpLambdaIntegration('AiInt', aiFn);
 
     api.addRoutes({
       path: '/api/tickets',
@@ -190,6 +204,27 @@ export class TriageStack extends Stack {
       path: '/api/settings',
       methods: [HttpMethod.GET, HttpMethod.PUT],
       integration: settingsIntegration,
+    });
+
+    api.addRoutes({
+      path: '/api/ai/ask',
+      methods: [HttpMethod.POST],
+      integration: aiIntegration,
+    });
+    api.addRoutes({
+      path: '/api/ai/digest',
+      methods: [HttpMethod.POST],
+      integration: aiIntegration,
+    });
+    api.addRoutes({
+      path: '/api/ai/risk',
+      methods: [HttpMethod.POST],
+      integration: aiIntegration,
+    });
+    api.addRoutes({
+      path: '/api/tickets/{ticketId}/ai-edit',
+      methods: [HttpMethod.POST],
+      integration: aiIntegration,
     });
 
     new CfnOutput(this, 'ApiUrl', {

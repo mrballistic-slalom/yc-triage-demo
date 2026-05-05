@@ -1,4 +1,11 @@
-import type { Ticket, Sprint, Settings, GroomResult } from '@/types';
+import type {
+  Ticket,
+  Sprint,
+  Settings,
+  GroomResult,
+  SprintRisk,
+  AiEditResult,
+} from '@/types';
 
 const BASE = (import.meta.env.VITE_API_URL as string | undefined) ?? '';
 
@@ -58,5 +65,18 @@ export const api = {
     request<Settings>('/api/settings', {
       method: 'PUT',
       body: JSON.stringify(patch),
+    }),
+  ask: (question: string) =>
+    request<{ answer: string }>('/api/ai/ask', {
+      method: 'POST',
+      body: JSON.stringify({ question }),
+    }),
+  digest: () =>
+    request<{ digest: string }>('/api/ai/digest', { method: 'POST' }),
+  risk: () => request<SprintRisk>('/api/ai/risk', { method: 'POST' }),
+  aiEdit: (ticketId: string, instruction: string) =>
+    request<AiEditResult>(`/api/tickets/${ticketId}/ai-edit`, {
+      method: 'POST',
+      body: JSON.stringify({ instruction }),
     }),
 };

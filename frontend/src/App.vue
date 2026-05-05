@@ -4,11 +4,14 @@ import { RouterLink, RouterView, useRoute } from 'vue-router';
 import { useSettingsStore } from '@/stores/settings';
 import { useBoardStore } from '@/stores/board';
 import { useSprintStore } from '@/stores/sprints';
+import { useAiStore } from '@/stores/ai';
 import PasswordGate from '@/components/PasswordGate.vue';
+import AskPanel from '@/components/AskPanel.vue';
 
 const settings = useSettingsStore();
 const board = useBoardStore();
 const sprints = useSprintStore();
+const ai = useAiStore();
 const route = useRoute();
 
 onMounted(async () => {
@@ -44,6 +47,10 @@ onMounted(async () => {
             to="/settings"
             >Settings</RouterLink
           >
+          <button class="nav__ask" @click="ai.openAsk()">
+            <span class="serif">Ask</span>
+            <span class="nav__ask-dot"></span>
+          </button>
         </nav>
       </header>
 
@@ -58,6 +65,8 @@ onMounted(async () => {
           {{ board.lastError }}
         </div>
       </Transition>
+
+      <AskPanel />
     </div>
   </v-app>
 </template>
