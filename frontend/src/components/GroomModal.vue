@@ -28,27 +28,28 @@ function ticketTitle(id: string): string {
         <h2 class="groom__title">Backlog, reconsidered.</h2>
       </header>
 
-      <div v-if="board.grooming" style="padding: 40px 0; text-align: center;">
-        <div class="thinking" style="height: 28px;">
-          <span style="height: 28px;"></span>
-          <span style="height: 28px;"></span>
-          <span style="height: 28px;"></span>
-          <span style="height: 28px;"></span>
+      <div class="groom__body">
+        <div v-if="board.grooming" style="padding: 40px 0; text-align: center;">
+          <div class="thinking" style="height: 28px;">
+            <span style="height: 28px;"></span>
+            <span style="height: 28px;"></span>
+            <span style="height: 28px;"></span>
+            <span style="height: 28px;"></span>
+          </div>
+          <div class="page-eyebrow" style="margin-top: 14px;">analyzing backlog…</div>
         </div>
-        <div class="page-eyebrow" style="margin-top: 14px;">analyzing backlog…</div>
-      </div>
 
-      <div v-else-if="board.groomError">
-        <div class="empty">
-          <div class="empty__title">Grooming failed</div>
-          <div class="empty__hint">try again in a moment.</div>
-          <button class="btn btn--primary" style="margin-top: 18px;" @click="board.runGroom()">
-            Retry
-          </button>
+        <div v-else-if="board.groomError">
+          <div class="empty">
+            <div class="empty__title">Grooming failed</div>
+            <div class="empty__hint">try again in a moment.</div>
+            <button class="btn btn--primary" style="margin-top: 18px;" @click="board.runGroom()">
+              Retry
+            </button>
+          </div>
         </div>
-      </div>
 
-      <div v-else-if="board.groomResult">
+        <div v-else-if="board.groomResult">
         <section class="groom__section">
           <div class="groom__section-title">
             <span class="count">{{ board.groomResult.duplicates.length }}</span>
@@ -142,10 +143,12 @@ function ticketTitle(id: string): string {
           </div>
         </section>
 
-        <div style="display: flex; justify-content: flex-end; padding-top: 16px; border-top: 1px solid var(--rule);">
-          <button class="btn btn--primary" @click="open = false">Done</button>
         </div>
       </div>
+
+      <footer v-if="board.groomResult" class="groom__footer">
+        <button class="btn btn--primary" @click="open = false">Done</button>
+      </footer>
     </div>
   </v-dialog>
 </template>
