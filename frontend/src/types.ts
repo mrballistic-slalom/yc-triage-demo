@@ -70,6 +70,18 @@ export interface GroomResult {
   groups: GroomGroup[];
 }
 
+export type RiskLevel = 'low' | 'medium' | 'high';
+
+export interface SprintRisk {
+  level: RiskLevel;
+  summary: string;
+}
+
+export interface AiEditResult {
+  ticket: Ticket;
+  patch: Partial<Ticket>;
+}
+
 export const PRIORITY_COLORS: Record<Priority, string> = {
   critical: '#F44336',
   high: '#FF9800',

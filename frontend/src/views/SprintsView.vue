@@ -5,6 +5,7 @@ import { useBoardStore } from '@/stores/board';
 import { STATUS_ORDER, type Ticket, type TicketStatus } from '@/types';
 import KanbanColumn from '@/components/KanbanColumn.vue';
 import TicketDrawer from '@/components/TicketDrawer.vue';
+import SprintRiskGauge from '@/components/SprintRiskGauge.vue';
 
 const sprints = useSprintStore();
 const board = useBoardStore();
@@ -121,6 +122,7 @@ function onMove(payload: { ticketId: string; status: TicketStatus; index: number
         <button class="btn btn--ghost" style="background: rgba(244,241,235,0.08); color: var(--paper); border-color: rgba(244,241,235,0.2);" @click="complete">
           Complete sprint
         </button>
+        <SprintRiskGauge />
       </div>
 
       <div class="kanban rise rise-4" style="grid-template-columns: 1fr 3fr; gap: 24px;">

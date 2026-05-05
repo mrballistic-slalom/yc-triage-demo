@@ -6,6 +6,7 @@ import Composer from '@/components/Composer.vue';
 import KanbanColumn from '@/components/KanbanColumn.vue';
 import TicketDrawer from '@/components/TicketDrawer.vue';
 import GroomModal from '@/components/GroomModal.vue';
+import DigestStrip from '@/components/DigestStrip.vue';
 
 const board = useBoardStore();
 const selected = ref<Ticket | null>(null);
@@ -31,6 +32,7 @@ function onMove(payload: { ticketId: string; status: TicketStatus; index: number
     </p>
 
     <div class="rise rise-3">
+      <DigestStrip />
       <Composer :busy="board.creating" @submit="onSubmit" />
     </div>
 

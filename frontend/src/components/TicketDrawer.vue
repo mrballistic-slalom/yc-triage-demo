@@ -2,6 +2,7 @@
 import { computed, ref, watch } from 'vue';
 import { useBoardStore } from '@/stores/board';
 import { useSettingsStore } from '@/stores/settings';
+import { api } from '@/api/client';
 import {
   STATUS_LABELS,
   STATUS_ORDER,
@@ -27,6 +28,10 @@ const open = computed({
 
 const labelInput = ref('');
 const confirmDelete = ref(false);
+const aiInstruction = ref('');
+const aiBusy = ref(false);
+const aiPatch = ref<Partial<Ticket> | null>(null);
+const aiError = ref<string | null>(null);
 
 watch(
   () => props.ticket,
@@ -34,9 +39,30 @@ watch(
     local.value = t ? { ...t } : null;
     confirmDelete.value = false;
     labelInput.value = '';
+    aiInstruction.value = '';
+    aiPatch.value = null;
+    aiError.value = null;
   },
   { immediate: true },
 );
+
+async function applyAiEdit() {
+  if (!local.value || !aiInstruction.value.trim() || aiBusy.value) return;
+  aiBusy.value = true;
+  aiError.value = null;
+  aiPatch.value = null;
+  try {
+    const result = await api.aiEdit(local.value.ticketId, aiInstruction.value.trim());
+    local.value = { ...local.value, ...result.ticket };
+    aiPatch.value = result.patch;
+    await board.load();
+    aiInstruction.value = '';
+  } catch (err) {
+    aiError.value = (err as Error).message;
+  } finally {
+    aiBusy.value = false;
+  }
+}
 
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
 function scheduleSave(patch: Partial<Ticket>) {
@@ -172,6 +198,37 @@ const statuses: TicketStatus[] = STATUS_ORDER;
         placeholder="Add detail…"
         @input="setField('description', ($event.target as HTMLTextAreaElement).value)"
       ></textarea>
+
+      <div class="drawer__ai">
+        <div class="drawer__eyebrow" style="margin-top: 22px;">Edit with AI</div>
+        <form class="drawer__ai-form" @submit.prevent="applyAiEdit">
+          <input
+            v-model="aiInstruction"
+            class="ask__input"
+            placeholder="e.g. bump to high, assign Alex Park, label as auth"
+            :disabled="aiBusy"
+            style="font-size: 13px;"
+          />
+          <button
+            type="submit"
+            class="btn btn--primary"
+            :disabled="aiBusy || !aiInstruction.trim()"
+          >
+            <span v-if="aiBusy" class="thinking" aria-hidden="true">
+              <span></span><span></span><span></span><span></span>
+            </span>
+            <span v-else>Apply</span>
+          </button>
+        </form>
+        <div v-if="aiPatch && Object.keys(aiPatch).length" class="drawer__ai-result mono">
+          applied:
+          <span v-for="(v, k) in aiPatch" :key="k" class="chip" style="margin-right: 4px;">
+            {{ k }}: {{ Array.isArray(v) ? v.join(', ') : (v ?? '∅') }}
+          </span>
+        </div>
+        <div v-else-if="aiPatch" class="drawer__ai-result mono">no change inferred.</div>
+        <div v-if="aiError" class="drawer__ai-error mono">{{ aiError }}</div>
+      </div>
 
       <div class="drawer__actions">
         <button class="btn btn--ghost" @click="emit('close')">Done</button>
