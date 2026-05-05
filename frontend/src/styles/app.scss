@@ -786,7 +786,7 @@ body {
   background: var(--ink);
   color: var(--paper);
   border-radius: 18px;
-  padding: 56px 32px 28px;
+  padding: 32px;
   margin-bottom: 24px;
   display: flex;
   justify-content: space-between;
@@ -797,45 +797,48 @@ body {
   min-height: 200px;
 }
 
+.sprint-hero__name-block {
+  align-self: center;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
 .sprint-hero__complete {
-  position: absolute;
-  top: 18px;
-  left: 22px;
+  align-self: flex-start;
+  margin-top: 14px;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   background: transparent;
-  border: 1px solid rgba(244, 241, 235, 0.18);
-  color: rgba(244, 241, 235, 0.78);
-  font-family: var(--font-body);
+  border: none;
+  color: rgba(244, 241, 235, 0.55);
+  font-family: var(--font-mono);
   font-size: 11px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
   font-weight: 500;
-  padding: 6px 14px 6px 12px;
-  border-radius: 999px;
+  padding: 0;
   cursor: pointer;
-  transition: background 160ms, border-color 160ms, color 160ms;
+  transition: color 160ms;
+  width: max-content;
 }
 
 .sprint-hero__complete:hover {
-  background: rgba(244, 241, 235, 0.08);
-  border-color: rgba(244, 241, 235, 0.4);
   color: var(--paper);
 }
 
-.sprint-hero__complete-arrow {
-  font-family: var(--font-mono);
-  font-size: 14px;
-  letter-spacing: 0;
-  color: var(--signal);
-  transform: translateY(-1px);
+.sprint-hero__complete:hover .sprint-hero__complete-arrow {
+  transform: translateX(-3px);
 }
 
-.sprint-hero__name-block {
-  align-self: flex-end;
-  flex: 1;
-  min-width: 0;
+.sprint-hero__complete-arrow {
+  display: inline-block;
+  color: var(--signal);
+  font-size: 13px;
+  transition: transform 200ms cubic-bezier(0.2, 0.7, 0.2, 1);
 }
 
 .sprint-hero__right {
