@@ -35,6 +35,27 @@ function complete(name: string) {
   value.value = `/${name} `;
 }
 
+function runSlashCommand(name: string, arg: string): boolean {
+  switch (name) {
+    case 'ask':
+      ai.openAsk();
+      if (arg) ai.ask(arg);
+      return true;
+    case 'standup':
+      ai.loadDigest(true);
+      return true;
+    case 'risks':
+      ai.openAsk();
+      ai.ask('What is most at risk right now, and what should we do about it?');
+      return true;
+    case 'groom':
+      board.runGroom();
+      return true;
+    default:
+      return false;
+  }
+}
+
 function submit() {
   if (props.busy || ai.asking) return;
   const v = value.value.trim();
@@ -42,28 +63,7 @@ function submit() {
 
   if (v.startsWith('/')) {
     const [head, ...rest] = v.slice(1).split(' ');
-    const arg = rest.join(' ').trim();
-    const head_l = head.toLowerCase();
-
-    if (head_l === 'ask') {
-      ai.openAsk();
-      if (arg) ai.ask(arg);
-      value.value = '';
-      return;
-    }
-    if (head_l === 'standup') {
-      ai.loadDigest(true);
-      value.value = '';
-      return;
-    }
-    if (head_l === 'risks') {
-      ai.openAsk();
-      ai.ask('What is most at risk right now, and what should we do about it?');
-      value.value = '';
-      return;
-    }
-    if (head_l === 'groom') {
-      board.runGroom();
+    if (runSlashCommand(head.toLowerCase(), rest.join(' ').trim())) {
       value.value = '';
       return;
     }

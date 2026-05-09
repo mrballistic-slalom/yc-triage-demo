@@ -1,9 +1,9 @@
-import type { APIGatewayProxyEventV2, APIGatewayProxyHandlerV2 } from 'aws-lambda';
+import type { APIGatewayProxyEventV2 } from 'aws-lambda';
 import {
   answerQuestion,
-  generateDigest,
-  assessSprintRisk,
   applyConversationalEdit,
+  assessSprintRisk,
+  generateDigest,
 } from '../lib/ai';
 import {
   getSettings,
@@ -14,13 +14,13 @@ import {
 } from '../lib/repo';
 import {
   badRequest,
+  createRouter,
   notFound,
   ok,
   parseBody,
   pathParam,
-  preflight,
-  serverError,
 } from '../lib/http';
+import { MAX_INSTRUCTION, MAX_QUESTION } from '../types';
 
 async function loadContext() {
   const [tickets, sprints, settings] = await Promise.all([
@@ -32,30 +32,13 @@ async function loadContext() {
   return { tickets, sprint, settings };
 }
 
-export const handler: APIGatewayProxyHandlerV2 = async (event) => {
-  const e = event as APIGatewayProxyEventV2;
-  const method = e.requestContext.http.method;
-  const route = e.routeKey ?? `${method} ${e.rawPath}`;
-
-  if (method === 'OPTIONS') return preflight();
-
-  try {
-    if (route === 'POST /api/ai/ask') return await askHandler(e);
-    if (route === 'POST /api/ai/digest') return await digestHandler();
-    if (route === 'POST /api/ai/risk') return await riskHandler();
-    if (route === 'POST /api/tickets/{ticketId}/ai-edit') return await editHandler(e);
-    return notFound(`Route ${route} not implemented`);
-  } catch (err) {
-    console.error('ai handler error', err);
-    return serverError((err as Error).message);
-  }
-};
-
 async function askHandler(e: APIGatewayProxyEventV2) {
   const body = parseBody<{ question?: string }>(e);
-  if (!body.question?.trim()) return badRequest('question is required');
+  const question = body.question?.trim();
+  if (!question) return badRequest('question is required');
+  if (question.length > MAX_QUESTION) return badRequest(`question must be ≤ ${MAX_QUESTION} characters`);
   const ctx = await loadContext();
-  const answer = await answerQuestion(body.question.trim(), ctx);
+  const answer = await answerQuestion(question, ctx);
   return ok({ answer });
 }
 
@@ -67,23 +50,28 @@ async function digestHandler() {
 }
 
 async function riskHandler() {
-  const ctx = await loadContext();
-  const risk = await assessSprintRisk(ctx);
-  return ok(risk);
+  return ok(await assessSprintRisk(await loadContext()));
 }
 
 async function editHandler(e: APIGatewayProxyEventV2) {
   const id = pathParam(e, 'ticketId');
   if (!id) return badRequest('ticketId is required');
   const body = parseBody<{ instruction?: string }>(e);
-  if (!body.instruction?.trim()) return badRequest('instruction is required');
+  const instruction = body.instruction?.trim();
+  if (!instruction) return badRequest('instruction is required');
+  if (instruction.length > MAX_INSTRUCTION) return badRequest(`instruction must be ≤ ${MAX_INSTRUCTION} characters`);
   const ticket = await getTicket(id);
   if (!ticket) return notFound('ticket not found');
   const ctx = await loadContext();
-  const patch = await applyConversationalEdit(ticket, body.instruction.trim(), ctx);
-  if (Object.keys(patch).length === 0) {
-    return ok({ ticket, patch });
-  }
+  const patch = await applyConversationalEdit(ticket, instruction, ctx);
+  if (Object.keys(patch).length === 0) return ok({ ticket, patch });
   const updated = await updateTicket(id, patch);
   return ok({ ticket: updated, patch });
 }
+
+export const handler = createRouter('ai', {
+  'POST /api/ai/ask': askHandler,
+  'POST /api/ai/digest': digestHandler,
+  'POST /api/ai/risk': riskHandler,
+  'POST /api/tickets/{ticketId}/ai-edit': editHandler,
+});

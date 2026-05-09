@@ -493,6 +493,24 @@ body {
   border-color: var(--ink);
 }
 
+.chip__close {
+  appearance: none;
+  margin-left: 6px;
+  padding: 0 2px;
+  background: transparent;
+  border: 0;
+  font: inherit;
+  color: var(--ink-faint);
+  cursor: pointer;
+  line-height: 1;
+}
+
+.chip__close:hover,
+.chip__close:focus-visible {
+  color: var(--ink);
+  outline: none;
+}
+
 .avatar {
   width: 26px;
   height: 26px;

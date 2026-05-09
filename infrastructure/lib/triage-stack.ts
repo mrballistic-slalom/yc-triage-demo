@@ -15,6 +15,7 @@ import {
   type NodejsFunctionProps,
 } from 'aws-cdk-lib/aws-lambda-nodejs';
 import { PolicyStatement, Effect } from 'aws-cdk-lib/aws-iam';
+import { RetentionDays } from 'aws-cdk-lib/aws-logs';
 import {
   HttpApi,
   HttpMethod,
@@ -77,11 +78,15 @@ export class TriageStack extends Stack {
       NODE_OPTIONS: '--enable-source-maps',
     };
 
-    const baseFn: Pick<NodejsFunctionProps, 'runtime' | 'memorySize' | 'timeout' | 'environment' | 'bundling'> = {
+    const baseFn: Pick<
+      NodejsFunctionProps,
+      'runtime' | 'memorySize' | 'timeout' | 'environment' | 'bundling' | 'logRetention'
+    > = {
       runtime: Runtime.NODEJS_22_X,
       memorySize: 512,
       timeout: Duration.seconds(30),
       environment: baseEnv,
+      logRetention: RetentionDays.TWO_WEEKS,
       bundling: {
         target: 'node22',
         format: OutputFormat.CJS,
@@ -132,11 +137,13 @@ export class TriageStack extends Stack {
     sprints.grantReadData(aiFn);
     settings.grantReadData(aiFn);
 
+    // Inference profile name is `us.<model-id>`; foundation model ARN drops the regional prefix.
+    const FOUNDATION_MODEL = BEDROCK_INFERENCE_PROFILE.replace(/^[a-z]{2}\./, '');
     const bedrockPolicy = new PolicyStatement({
       effect: Effect.ALLOW,
       actions: ['bedrock:InvokeModel'],
       resources: [
-        `arn:aws:bedrock:*::foundation-model/anthropic.claude-sonnet-4-5-*`,
+        `arn:aws:bedrock:*::foundation-model/${FOUNDATION_MODEL}`,
         `arn:aws:bedrock:*:${this.account}:inference-profile/${BEDROCK_INFERENCE_PROFILE}`,
       ],
     });
@@ -163,69 +170,21 @@ export class TriageStack extends Stack {
     const settingsIntegration = new HttpLambdaIntegration('SettingsInt', settingsFn);
     const aiIntegration = new HttpLambdaIntegration('AiInt', aiFn);
 
-    api.addRoutes({
-      path: '/api/tickets',
-      methods: [HttpMethod.GET, HttpMethod.POST],
-      integration: ticketsIntegration,
-    });
-    api.addRoutes({
-      path: '/api/tickets/{ticketId}',
-      methods: [HttpMethod.PUT, HttpMethod.DELETE],
-      integration: ticketsIntegration,
-    });
-    api.addRoutes({
-      path: '/api/tickets/groom',
-      methods: [HttpMethod.POST],
-      integration: ticketsIntegration,
-    });
-    api.addRoutes({
-      path: '/api/tickets/merge',
-      methods: [HttpMethod.POST],
-      integration: ticketsIntegration,
-    });
-
-    api.addRoutes({
-      path: '/api/sprints',
-      methods: [HttpMethod.GET, HttpMethod.POST],
-      integration: sprintsIntegration,
-    });
-    api.addRoutes({
-      path: '/api/sprints/{sprintId}',
-      methods: [HttpMethod.PUT],
-      integration: sprintsIntegration,
-    });
-    api.addRoutes({
-      path: '/api/sprints/{sprintId}/complete',
-      methods: [HttpMethod.POST],
-      integration: sprintsIntegration,
-    });
-
-    api.addRoutes({
-      path: '/api/settings',
-      methods: [HttpMethod.GET, HttpMethod.PUT],
-      integration: settingsIntegration,
-    });
-
-    api.addRoutes({
-      path: '/api/ai/ask',
-      methods: [HttpMethod.POST],
-      integration: aiIntegration,
-    });
-    api.addRoutes({
-      path: '/api/ai/digest',
-      methods: [HttpMethod.POST],
-      integration: aiIntegration,
-    });
-    api.addRoutes({
-      path: '/api/ai/risk',
-      methods: [HttpMethod.POST],
-      integration: aiIntegration,
-    });
-    api.addRoutes({
-      path: '/api/tickets/{ticketId}/ai-edit',
-      methods: [HttpMethod.POST],
-      integration: aiIntegration,
-    });
+    const routes: { path: string; methods: HttpMethod[]; integration: HttpLambdaIntegration }[] = [
+      { path: '/api/tickets', methods: [HttpMethod.GET, HttpMethod.POST], integration: ticketsIntegration },
+      { path: '/api/tickets/{ticketId}', methods: [HttpMethod.PUT, HttpMethod.DELETE], integration: ticketsIntegration },
+      { path: '/api/tickets/groom', methods: [HttpMethod.POST], integration: ticketsIntegration },
+      { path: '/api/tickets/merge', methods: [HttpMethod.POST], integration: ticketsIntegration },
+      { path: '/api/sprints', methods: [HttpMethod.GET, HttpMethod.POST], integration: sprintsIntegration },
+      { path: '/api/sprints/{sprintId}', methods: [HttpMethod.PUT], integration: sprintsIntegration },
+      { path: '/api/sprints/{sprintId}/complete', methods: [HttpMethod.POST], integration: sprintsIntegration },
+      { path: '/api/settings', methods: [HttpMethod.GET, HttpMethod.PUT], integration: settingsIntegration },
+      { path: '/api/ai/ask', methods: [HttpMethod.POST], integration: aiIntegration },
+      { path: '/api/ai/digest', methods: [HttpMethod.POST], integration: aiIntegration },
+      { path: '/api/ai/risk', methods: [HttpMethod.POST], integration: aiIntegration },
+      { path: '/api/tickets/{ticketId}/ai-edit', methods: [HttpMethod.POST], integration: aiIntegration },
+    ];
+    for (const route of routes) api.addRoutes(route);
 
     new CfnOutput(this, 'ApiUrl', {
       value: api.apiEndpoint,

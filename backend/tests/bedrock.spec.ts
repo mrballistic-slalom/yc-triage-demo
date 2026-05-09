@@ -123,3 +123,25 @@ describe('bedrock client', () => {
     expect(result.groups[0].name).toBe('Checkout');
   });
 });
+
+describe('extractJson', () => {
+  it('extracts the first balanced object even when an array follows', async () => {
+    const { extractJson } = await import('../src/lib/bedrock');
+    expect(extractJson('prefix {"a":1} [trailing]')).toEqual({ a: 1 });
+  });
+
+  it('extracts the first balanced array even when an object follows', async () => {
+    const { extractJson } = await import('../src/lib/bedrock');
+    expect(extractJson('[1,2,3] {"a":1}')).toEqual([1, 2, 3]);
+  });
+
+  it('handles brackets inside string values', async () => {
+    const { extractJson } = await import('../src/lib/bedrock');
+    expect(extractJson('{"text":"a } b ] c"}')).toEqual({ text: 'a } b ] c' });
+  });
+
+  it('handles nested objects and arrays', async () => {
+    const { extractJson } = await import('../src/lib/bedrock');
+    expect(extractJson('{"a":[1,{"b":2}]}')).toEqual({ a: [1, { b: 2 }] });
+  });
+});

@@ -1,65 +1,15 @@
-import { BedrockRuntimeClient, InvokeModelCommand } from '@aws-sdk/client-bedrock-runtime';
-import type { Settings, Sprint, Ticket } from '../types';
-
-const region = process.env.AWS_REGION ?? 'us-west-2';
-const inferenceProfile = process.env.BEDROCK_MODEL_ID ?? 'us.anthropic.claude-sonnet-4-5-20250929-v1:0';
-const client = new BedrockRuntimeClient({ region });
-
-interface BedrockMessage {
-  role: 'user' | 'assistant';
-  content: { type: 'text'; text: string }[];
-}
-
-interface BedrockBody {
-  anthropic_version: 'bedrock-2023-05-31';
-  max_tokens: number;
-  system?: string;
-  messages: BedrockMessage[];
-  temperature?: number;
-}
-
-interface BedrockResponse {
-  content: { type: 'text'; text: string }[];
-  stop_reason: string;
-}
-
-const TYPOGRAPHY_RULE =
-  'TYPOGRAPHY: in every user-visible string, use proper smart punctuation: curly apostrophes (’), curly quotes (“ ”), em dashes (—), en dashes (–), ellipses (…). Never use straight foot-marks ("), straight apostrophes (\'), or double-hyphens (--).';
-
-async function invokeBedrock(system: string, prompt: string, maxTokens = 1500): Promise<string> {
-  const body: BedrockBody = {
-    anthropic_version: 'bedrock-2023-05-31',
-    max_tokens: maxTokens,
-    system,
-    temperature: 0.3,
-    messages: [{ role: 'user', content: [{ type: 'text', text: prompt }] }],
-  };
-  const cmd = new InvokeModelCommand({
-    modelId: inferenceProfile,
-    contentType: 'application/json',
-    accept: 'application/json',
-    body: Buffer.from(JSON.stringify(body)),
-  });
-  const result = await client.send(cmd);
-  const text = new TextDecoder().decode(result.body);
-  const parsed = JSON.parse(text) as BedrockResponse;
-  return parsed.content
-    .filter((c) => c.type === 'text')
-    .map((c) => c.text)
-    .join('\n')
-    .trim();
-}
-
-function extractJson(raw: string): unknown {
-  const fenced = raw.match(/```(?:json)?\s*([\s\S]*?)```/);
-  const candidate = fenced ? fenced[1] : raw;
-  const start = candidate.indexOf('{');
-  const arrStart = candidate.indexOf('[');
-  const first = start === -1 ? arrStart : arrStart === -1 ? start : Math.min(start, arrStart);
-  const last = Math.max(candidate.lastIndexOf('}'), candidate.lastIndexOf(']'));
-  if (first === -1 || last === -1) throw new Error('No JSON in response');
-  return JSON.parse(candidate.slice(first, last + 1));
-}
+import { extractJson, invokeBedrock, TYPOGRAPHY_RULE } from './bedrock';
+import {
+  MAX_DESCRIPTION,
+  MAX_LABELS,
+  MAX_TITLE,
+  VALID_PRIORITIES,
+  VALID_STATUSES,
+  VALID_TYPES,
+  type Settings,
+  type Sprint,
+  type Ticket,
+} from '../types';
 
 interface ProjectContext {
   tickets: Ticket[];
@@ -97,7 +47,7 @@ export async function answerQuestion(question: string, ctx: ProjectContext): Pro
     TYPOGRAPHY_RULE,
   ].join(' ');
   const prompt = `Project state:\n${summarizeContext(ctx)}\n\nQuestion: ${question}\n\nAnswer:`;
-  return invokeBedrock(system, prompt, 600);
+  return invokeBedrock(system, prompt, { maxTokens: 600, temperature: 0.3 });
 }
 
 export async function generateDigest(ctx: ProjectContext): Promise<string> {
@@ -108,13 +58,14 @@ export async function generateDigest(ctx: ProjectContext): Promise<string> {
     TYPOGRAPHY_RULE,
   ].join(' ');
   const prompt = `Project state:\n${summarizeContext(ctx)}\n\nWrite the digest now:`;
-  const raw = await invokeBedrock(system, prompt, 200);
+  const raw = await invokeBedrock(system, prompt, { maxTokens: 200, temperature: 0.3 });
   return raw.replace(/^[*•\-\s]+/, '').trim().slice(0, 240);
 }
 
 export interface SprintRisk {
   level: 'low' | 'medium' | 'high';
   summary: string;
+  unavailable?: boolean;
 }
 
 export async function assessSprintRisk(ctx: ProjectContext): Promise<SprintRisk> {
@@ -138,15 +89,16 @@ export async function assessSprintRisk(ctx: ProjectContext): Promise<SprintRisk>
   );
   const prompt = `Sprint "${ctx.sprint.name}" · ${daysLeft} day(s) left · ${sprintTickets.length} tickets:\n${lines}\n\nRespond with JSON now.`;
 
-  const raw = await invokeBedrock(system, prompt, 200);
+  const raw = await invokeBedrock(system, prompt, { maxTokens: 200, temperature: 0.3 });
   try {
     const parsed = extractJson(raw) as { level?: string; summary?: string };
     const level: SprintRisk['level'] =
       parsed.level === 'high' || parsed.level === 'medium' ? parsed.level : 'low';
     const summary = String(parsed.summary ?? 'on track').slice(0, 160);
     return { level, summary };
-  } catch {
-    return { level: 'low', summary: 'on track' };
+  } catch (err) {
+    console.warn('assessSprintRisk: parse failed', err);
+    return { level: 'medium', summary: 'risk assessment unavailable', unavailable: true };
   }
 }
 
@@ -179,32 +131,23 @@ export async function applyConversationalEdit(
     2,
   )}\n\nTeam: ${teamNames.join(', ') || '(none)'}\nExisting labels: ${labelNames.join(', ') || '(none)'}\n\nInstruction: ${instruction}\n\nRespond with the patch JSON now.`;
 
-  const raw = await invokeBedrock(system, prompt, 400);
+  const raw = await invokeBedrock(system, prompt, { maxTokens: 400, temperature: 0.3 });
   const parsed = extractJson(raw) as Record<string, unknown>;
   const patch: Partial<Ticket> = {};
-  if (typeof parsed.title === 'string') patch.title = parsed.title.slice(0, 80);
-  if (typeof parsed.description === 'string')
-    patch.description = parsed.description.slice(0, 1000);
-  if (
-    typeof parsed.priority === 'string' &&
-    ['critical', 'high', 'medium', 'low'].includes(parsed.priority)
-  ) {
+
+  if (typeof parsed.title === 'string') patch.title = parsed.title.slice(0, MAX_TITLE);
+  if (typeof parsed.description === 'string') patch.description = parsed.description.slice(0, MAX_DESCRIPTION);
+  if (typeof parsed.priority === 'string' && (VALID_PRIORITIES as readonly string[]).includes(parsed.priority)) {
     patch.priority = parsed.priority as Ticket['priority'];
   }
-  if (
-    typeof parsed.type === 'string' &&
-    ['bug', 'feature', 'task', 'chore'].includes(parsed.type)
-  ) {
+  if (typeof parsed.type === 'string' && (VALID_TYPES as readonly string[]).includes(parsed.type)) {
     patch.type = parsed.type as Ticket['type'];
   }
-  if (
-    typeof parsed.status === 'string' &&
-    ['backlog', 'in_progress', 'in_review', 'done'].includes(parsed.status)
-  ) {
+  if (typeof parsed.status === 'string' && (VALID_STATUSES as readonly string[]).includes(parsed.status)) {
     patch.status = parsed.status as Ticket['status'];
   }
   if (Array.isArray(parsed.labels)) {
-    patch.labels = parsed.labels.map(String).slice(0, 6);
+    patch.labels = parsed.labels.map(String).slice(0, MAX_LABELS);
   }
   if (parsed.assignee === null) {
     patch.assignee = null;

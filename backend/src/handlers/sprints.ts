@@ -1,4 +1,4 @@
-import type { APIGatewayProxyEventV2, APIGatewayProxyHandlerV2 } from 'aws-lambda';
+import type { APIGatewayProxyEventV2 } from 'aws-lambda';
 import { v4 as uuid } from 'uuid';
 import {
   getSprint,
@@ -9,34 +9,14 @@ import {
 } from '../lib/repo';
 import {
   badRequest,
+  createRouter,
   noContent,
   notFound,
   ok,
   parseBody,
   pathParam,
-  preflight,
-  serverError,
 } from '../lib/http';
 import type { Sprint } from '../types';
-
-export const handler: APIGatewayProxyHandlerV2 = async (event) => {
-  const e = event as APIGatewayProxyEventV2;
-  const method = e.requestContext.http.method;
-  const route = e.routeKey ?? `${method} ${e.rawPath}`;
-
-  if (method === 'OPTIONS') return preflight();
-
-  try {
-    if (route === 'GET /api/sprints') return ok(await listSprints());
-    if (route === 'POST /api/sprints') return await createHandler(e);
-    if (route === 'PUT /api/sprints/{sprintId}') return await updateHandler(e);
-    if (route === 'POST /api/sprints/{sprintId}/complete') return await completeHandler(e);
-    return notFound(`Route ${route} not implemented`);
-  } catch (err) {
-    console.error('sprints handler error', err);
-    return serverError((err as Error).message);
-  }
-};
 
 async function createHandler(e: APIGatewayProxyEventV2) {
   const body = parseBody<{ name?: string; duration?: number }>(e);
@@ -97,3 +77,10 @@ async function completeHandler(e: APIGatewayProxyEventV2) {
   await putSprint({ ...sprint, status: 'completed' });
   return noContent();
 }
+
+export const handler = createRouter('sprints', {
+  'GET /api/sprints': async () => ok(await listSprints()),
+  'POST /api/sprints': createHandler,
+  'PUT /api/sprints/{sprintId}': updateHandler,
+  'POST /api/sprints/{sprintId}/complete': completeHandler,
+});

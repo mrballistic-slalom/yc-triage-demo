@@ -113,24 +113,18 @@ export const useBoardStore = defineStore('board', () => {
 
   async function applyPriority(ticketId: string, newPriority: Ticket['priority']) {
     await update(ticketId, { priority: newPriority });
-    if (groomResult.value) {
-      groomResult.value.priorityChanges = groomResult.value.priorityChanges.filter(
-        (p) => p.ticketId !== ticketId,
-      );
-    }
+    dismissPriority(ticketId);
   }
 
   async function applyMerge(keepId: string, deleteId: string) {
     try {
       const merged = await api.mergeTickets(keepId, deleteId);
-      tickets.value = tickets.value
-        .filter((t) => t.ticketId !== deleteId)
-        .map((t) => (t.ticketId === keepId ? merged : t));
-      if (groomResult.value) {
-        groomResult.value.duplicates = groomResult.value.duplicates.filter(
-          (d) => d.keepId !== keepId || d.deleteId !== deleteId,
-        );
-      }
+      tickets.value = tickets.value.flatMap((t) => {
+        if (t.ticketId === deleteId) return [];
+        if (t.ticketId === keepId) return [merged];
+        return [t];
+      });
+      dismissDuplicate(keepId, deleteId);
     } catch (err) {
       lastError.value = (err as Error).message;
     }

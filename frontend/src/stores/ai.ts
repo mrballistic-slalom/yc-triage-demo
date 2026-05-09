@@ -29,23 +29,20 @@ export const useAiStore = defineStore('ai', () => {
     askOpen.value = false;
   }
 
+  function patchExchange(id: string, patch: Partial<AskExchange>) {
+    const idx = exchanges.value.findIndex((e) => e.id === id);
+    if (idx >= 0) exchanges.value[idx] = { ...exchanges.value[idx], ...patch };
+  }
+
   async function ask(question: string) {
     const id = Math.random().toString(36).slice(2);
-    const exchange: AskExchange = { id, question, answer: '', pending: true };
-    exchanges.value.unshift(exchange);
+    exchanges.value.unshift({ id, question, answer: '', pending: true });
     asking.value = true;
     try {
       const { answer } = await api.ask(question);
-      const idx = exchanges.value.findIndex((e) => e.id === id);
-      if (idx >= 0) exchanges.value[idx] = { ...exchange, answer, pending: false };
+      patchExchange(id, { answer, pending: false });
     } catch (err) {
-      const idx = exchanges.value.findIndex((e) => e.id === id);
-      if (idx >= 0)
-        exchanges.value[idx] = {
-          ...exchange,
-          pending: false,
-          error: (err as Error).message,
-        };
+      patchExchange(id, { pending: false, error: (err as Error).message });
     } finally {
       asking.value = false;
     }
