@@ -175,11 +175,12 @@ const statuses: TicketStatus[] = STATUS_ORDER;
           <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px;">
             <span v-for="label in local.labels" :key="label" class="chip">
               {{ label }}
-              <span
-                style="margin-left: 6px; cursor: pointer; color: var(--ink-faint);"
+              <button
+                type="button"
+                class="chip__close"
+                :aria-label="`Remove label ${label}`"
                 @click="removeLabel(label)"
-                >×</span
-              >
+              >×</button>
             </span>
           </div>
           <input

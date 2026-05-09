@@ -101,12 +101,14 @@ function onRename() {
           >
             <span class="label-pill__dot" :style="{ background: l.color }"></span>
             {{ l.name }}
-            <span
-              style="margin-left: 4px; cursor: pointer; color: var(--ink-faint);"
+            <button
+              type="button"
+              class="chip__close"
               :title="usedLabels.includes(l.name) ? 'In use' : 'Remove'"
+              :aria-label="usedLabels.includes(l.name) ? `Label ${l.name} is in use` : `Remove label ${l.name}`"
+              :disabled="usedLabels.includes(l.name)"
               @click="removeLabel(l.name)"
-              >{{ usedLabels.includes(l.name) ? '·' : '×' }}</span
-            >
+            >{{ usedLabels.includes(l.name) ? '·' : '×' }}</button>
           </span>
         </div>
         <div style="display: flex; gap: 8px;">

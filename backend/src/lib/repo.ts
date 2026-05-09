@@ -1,6 +1,7 @@
 import {
   GetCommand,
   PutCommand,
+  QueryCommand,
   ScanCommand,
   UpdateCommand,
   DeleteCommand,
@@ -16,10 +17,20 @@ const DEFAULT_SETTINGS: Settings = {
 };
 
 export async function listTickets(status?: string): Promise<Ticket[]> {
-  const cmd = new ScanCommand({ TableName: TABLES.tickets });
-  const result = await ddb.send(cmd);
-  const tickets = (result.Items ?? []) as Ticket[];
-  return status ? tickets.filter((t) => t.status === status) : tickets;
+  if (status) {
+    const result = await ddb.send(
+      new QueryCommand({
+        TableName: TABLES.tickets,
+        IndexName: 'StatusPriorityIndex',
+        KeyConditionExpression: '#s = :s',
+        ExpressionAttributeNames: { '#s': 'status' },
+        ExpressionAttributeValues: { ':s': status },
+      }),
+    );
+    return (result.Items ?? []) as Ticket[];
+  }
+  const result = await ddb.send(new ScanCommand({ TableName: TABLES.tickets }));
+  return (result.Items ?? []) as Ticket[];
 }
 
 export async function getTicket(ticketId: string): Promise<Ticket | null> {
